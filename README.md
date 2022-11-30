@@ -1,4 +1,4 @@
-Script to assign gift relationship. Given a file with participants, assigns a gift receiver to a gift giver.
+Script to assign gift relationships. Given a file with participants, assigns a gift receiver to a gift giver.
 
 Built in spouse-checking to ensure spouses are not assigned to each other.
 
