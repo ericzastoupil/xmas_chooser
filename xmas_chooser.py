@@ -1,4 +1,4 @@
-import csv, random, smtplib, ssl, argparse, configparser
+import csv, random, smtplib, argparse, configparser
 
 
 class Participant():
