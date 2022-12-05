@@ -12,9 +12,8 @@ def parse_command_line():
     parser = argparse.ArgumentParser(prog='xmas chooser', description='Assigns secret (or not secret) gift pairings')
     p_e_group = parser.add_mutually_exclusive_group(required=True)
     p_e_group.add_argument('-p', '--print', action='store_true', help='print assignments to console. not a secret')
-    p_e_group.add_argument('-e','--email', action='store_true', help='email assignments. keeps things a secret')
+    p_e_group.add_argument('-e','--email', type=str, help='email assignments. keeps things a secret. pass in config file if using this switch')
     parser.add_argument('-f', '--file', type=str, required=True, help="file with participant info")
-    parser.add_argument('-c', '--config', type=str, default='config.ini', help='config file for emails. default is config.ini')
     parser.add_argument('-r', '--real', action='store_true', help='set this to send the real assignment emails')
 
     return parser.parse_args()
@@ -125,4 +124,4 @@ if __name__ == '__main__':
     if args.print:
         print_results(givers, receivers)
     elif args.email:
-        email_results(args.config, givers, receivers, args.real)
+        email_results(args.email, givers, receivers, args.real)
