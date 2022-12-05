@@ -85,7 +85,7 @@ def create_list(file_name):
         for l in reader:
             dont_gift = []
             
-            #each word in the line (separated by column)
+            #each word in the line
             for w in range(len(l)):
                 #first word is the name
                 if w == 0:
