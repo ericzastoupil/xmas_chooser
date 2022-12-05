@@ -2,16 +2,17 @@ import csv, random, smtplib, argparse, configparser
 
 
 class Participant():
-    def __init__(self, name, spouse, email):
+    def __init__(self, name, spouse, email, dont_gift):
         self.name = name
         self.spouse = spouse
         self.email = email
+        self.dont_gift = dont_gift
 
 def parse_command_line():
     parser = argparse.ArgumentParser(prog='xmas chooser', description='Assigns secret (or not secret) gift pairings')
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-e','--email', action='store_true', help='email assignments. keeps things a secret')
-    group.add_argument('-p', '--print', action='store_true', help='print assignments to console. not a secret')
+    p_e_group = parser.add_mutually_exclusive_group(required=True)
+    p_e_group.add_argument('-p', '--print', action='store_true', help='print assignments to console. not a secret')
+    p_e_group.add_argument('-e','--email', action='store_true', help='email assignments. keeps things a secret')
     parser.add_argument('-f', '--file', type=str, required=True, help="file with participant info")
     parser.add_argument('-c', '--config', type=str, default='config.ini', help='config file for emails. default is config.ini')
     parser.add_argument('-r', '--real', action='store_true', help='set this to send the real assignment emails')
@@ -27,11 +28,13 @@ def create_assignments(givers, receivers):
         invalid = False
         random.shuffle(receivers)
     
-        #If giving to yourself or your spouse, make this run invalid
+        #If giving to yourself/your spouse/someone you're not allowed to, make this run invalid
         for i in range(len(givers)):
             if givers[i].name == receivers[i].name:
                 invalid = True
             elif givers[i].spouse == receivers[i].name:
+                invalid = True
+            elif receivers[i].name in givers[i].dont_gift:
                 invalid = True
 
 def email_results(config_file, givers, receivers, real):
@@ -74,13 +77,32 @@ def print_results(givers, receivers):
 
 def create_list(file_name):
     givers = []
-
+    
     with open(file_name) as file:
         reader = csv.reader(file)
         next(reader)
-        
-        for name, spouse, email in reader:
-            p = Participant(name, spouse, email)
+
+        #each line in the file (structured as a list)
+        for l in reader:
+            dont_gift = []
+            
+            #each word in the line (separated by column)
+            for w in range(len(l)):
+                #first word is the name
+                if w == 0:
+                    name = l[w]
+                #second word is the spouse
+                elif w == 1:
+                    spouse = l[w]
+                #third word is the email
+                elif w == 2:
+                    email = l[w]
+                #everything else is an ineligible receiver
+                else:
+                    dont_gift.append(l[w])
+
+            #create the participant and add to the givers list
+            p = Participant(name, spouse, email, dont_gift)
             givers.append(p)
         
     return givers
