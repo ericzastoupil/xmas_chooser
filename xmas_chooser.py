@@ -12,8 +12,8 @@ def parse_command_line():
     parser = argparse.ArgumentParser(prog='xmas chooser', description='Assigns secret (or not secret) gift pairings')
     p_e_group = parser.add_mutually_exclusive_group(required=True)
     p_e_group.add_argument('-p', '--print', action='store_true', help='print assignments to console. not a secret')
-    p_e_group.add_argument('-e','--email', type=str, help='email assignments. keeps things a secret. pass in config file if using this switch')
-    parser.add_argument('-f', '--file', type=str, required=True, help="file with participant info")
+    p_e_group.add_argument('-e','--email', type=str, help='email assignments. keeps things a secret. pass in config file (required) if using this switch')
+    parser.add_argument('-f', '--file', type=str, required=True, help="file with participant info (required)")
     parser.add_argument('-r', '--real', action='store_true', help='set this to send the real assignment emails')
 
     return parser.parse_args()
@@ -28,12 +28,12 @@ def create_assignments(givers, receivers):
         random.shuffle(receivers)
     
         #If giving to yourself/your spouse/someone you're not allowed to, make this run invalid
-        for i in range(len(givers)):
-            if givers[i].name == receivers[i].name:
+        for giver, receiver in zip(givers, receivers):
+            if giver.name == receiver.name:
                 invalid = True
-            elif givers[i].spouse == receivers[i].name:
+            elif giver.spouse == receiver.name:
                 invalid = True
-            elif receivers[i].name in givers[i].dont_gift:
+            elif receiver.name in giver.dont_gift:
                 invalid = True
 
 def email_results(config_file, givers, receivers, real):
@@ -71,8 +71,8 @@ def email_results(config_file, givers, receivers, real):
         print(f'[+] Email sent to {givers[i].name} at address {givers[i].email}:')
 
 def print_results(givers, receivers):
-    for i in range(len(givers)):
-        print(f'{givers[i].name} gets a gift for {receivers[i].name}')
+    for giver, receiver in zip(givers, receivers):
+        print(f'{giver.name} gets a gift for {receiver.name}')
 
 def create_list(file_name):
     givers = []
