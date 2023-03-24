@@ -47,13 +47,13 @@ def email_results(config_file, givers, receivers, real):
     sender_mail = str(config['DEFAULT']['SENDER_EMAIL'])
     password = str(config['DEFAULT']['SENDER_EMAIL_PASSWORD'])
 
-    for i in range(len(givers)):
+    for giver, receiver in zip(givers, receivers):
         
         message = f"""\
             Subject: Your secret santa selection
 
-            Hi {givers[i].name},
-            You will give a gift to {receivers[i].name}
+            Hi {giver.name},
+            You will give a gift to {receiver.name}
             """
         
         s = smtplib.SMTP_SSL(server, port)
@@ -61,14 +61,14 @@ def email_results(config_file, givers, receivers, real):
 
         if real:
             #don't uncomment until game time
-            #s.sendmail(sender_mail, givers[i].email, message)
+            #s.sendmail(sender_mail, giver.email, message)
             pass
         else:
             s.sendmail(sender_mail, sender_mail, message)
                     
         s.quit()
         
-        print(f'[+] Email sent to {givers[i].name} at address {givers[i].email}:')
+        print(f'[+] Email sent to {giver.name} at address {giver.email}:')
 
 def print_results(givers, receivers):
     for giver, receiver in zip(givers, receivers):
