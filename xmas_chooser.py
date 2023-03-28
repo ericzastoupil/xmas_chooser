@@ -22,7 +22,7 @@ def create_assignments(givers, receivers):
 
     invalid = True
 
-    #Loop until no one is giving to himself/herself or to their spouse
+    #Loop until no one is giving to himself/herself, their spouse, or a don't gifter
     while invalid:
         invalid = False
         random.shuffle(receivers)
@@ -84,7 +84,6 @@ def create_list(file_name):
         #each line in the file (structured as a list)
         for l in reader:
             name, spouse, email, *dont_gift = l
-            print(f'Giver: {name}, spouse, {spouse}, email {email}, dont_gift {dont_gift}')
 
             #create the participant and add to the givers list
             p = Participant(name, spouse, email, dont_gift)
