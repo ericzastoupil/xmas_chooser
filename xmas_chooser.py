@@ -1,5 +1,5 @@
 import csv, random, smtplib, argparse, configparser
-from Participant import Participant
+from participant import Participant
 
 def parse_command_line():
     parser = argparse.ArgumentParser(prog='xmas chooser', description='Assigns secret (or not secret) gift pairings')
