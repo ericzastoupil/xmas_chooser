@@ -83,22 +83,8 @@ def create_list(file_name):
 
         #each line in the file (structured as a list)
         for l in reader:
-            dont_gift = []
-            
-            #each word in the line
-            for w in range(len(l)):
-                #first word is the name
-                if w == 0:
-                    name = l[w]
-                #second word is the spouse
-                elif w == 1:
-                    spouse = l[w]
-                #third word is the email
-                elif w == 2:
-                    email = l[w]
-                #everything else is an ineligible receiver
-                else:
-                    dont_gift.append(l[w])
+            name, spouse, email, *dont_gift = l
+            print(f'Giver: {name}, spouse, {spouse}, email {email}, dont_gift {dont_gift}')
 
             #create the participant and add to the givers list
             p = Participant(name, spouse, email, dont_gift)
