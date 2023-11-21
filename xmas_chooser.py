@@ -1,4 +1,4 @@
-import csv, random, smtplib, argparse, configparser
+import csv, random, smtplib, argparse, configparser, json
 from participant import Participant
 
 def parse_command_line():
@@ -71,15 +71,9 @@ def create_list(file_name):
     givers = []
     
     with open(file_name) as file:
-        reader = csv.reader(file)
-        next(reader)
-
-        #each line in the file (structured as a list)
-        for l in reader:
-            name, spouse, email, *dont_gift = l
-
-            #create the participant and add to the givers list
-            p = Participant(name, spouse, email, dont_gift)
+        for jsonObj in file:
+            pDict = json.loads(jsonObj)
+            p = Participant(pDict["name"], pDict["spouse"], pDict["email"], pDict["dont_gift"])
             givers.append(p)
         
     return givers
