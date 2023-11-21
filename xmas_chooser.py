@@ -1,4 +1,4 @@
-import csv, random, smtplib, argparse, configparser, json
+import random, smtplib, argparse, configparser, json
 from participant import Participant
 
 def parse_command_line():
