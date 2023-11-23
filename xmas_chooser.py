@@ -24,8 +24,6 @@ def create_assignments(givers, receivers):
         for giver, receiver in zip(givers, receivers):
             if giver.name == receiver.name:
                 invalid = True
-            elif giver.spouse == receiver.name:
-                invalid = True
             elif receiver.name in giver.dont_gift:
                 invalid = True
 
@@ -73,7 +71,7 @@ def create_list(file_name):
     with open(file_name) as file:
         for jsonObj in file:
             pDict = json.loads(jsonObj)
-            p = Participant(pDict["name"], pDict["spouse"], pDict["email"], pDict["dont_gift"])
+            p = Participant(pDict["name"], pDict["email"], pDict["dont_gift"])
             givers.append(p)
         
     return givers
