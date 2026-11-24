@@ -68,15 +68,49 @@ def print_results(givers, receivers):
     for giver, receiver in zip(givers, receivers):
         print(f'{giver.name} gets a gift for {receiver.name}')
 
+REQUIRED_KEYS = ("name", "email", "dont_gift")
+
 def create_list(file_name):
     givers = []
-    
+    errors = []
+
     with open(file_name) as file:
-        for jsonObj in file:
-            pDict = json.loads(jsonObj)
-            p = Participant(pDict["name"], pDict["email"], pDict["dont_gift"])
-            givers.append(p)
-        
+        for line_num, line in enumerate(file, start=1):
+            #Skip blank lines
+            if not line.strip():
+                continue
+
+            try:
+                pDict = json.loads(line)
+            except json.JSONDecodeError as e:
+                errors.append(f"line {line_num}: invalid JSON ({e.msg})")
+                continue
+
+            missing = [key for key in REQUIRED_KEYS if key not in pDict]
+            if missing:
+                errors.append(f"line {line_num}: missing {', '.join(missing)}")
+                continue
+
+            if not isinstance(pDict["dont_gift"], list):
+                errors.append(f"line {line_num}: dont_gift must be a list of names")
+                continue
+
+            givers.append(Participant(pDict["name"], pDict["email"], pDict["dont_gift"]))
+
+    #Names are used to match people, so they must be unique
+    names = [p.name for p in givers]
+    for name in sorted({n for n in names if names.count(n) > 1}):
+        errors.append(f"duplicate name: {name}")
+
+    #Every dont_gift entry must be a real participant (catches typos)
+    for p in givers:
+        for blocked in p.dont_gift:
+            if blocked not in names:
+                errors.append(f"{p.name}'s dont_gift has unknown name: {blocked!r}")
+
+    if errors:
+        raise ValueError(f"Problems in {file_name}:\n  " + "\n  ".join(errors))
+
     return givers
 
 if __name__ == '__main__':
@@ -85,7 +119,10 @@ if __name__ == '__main__':
     args = parse_command_line()
 
     #Create initial list based on file to read in
-    givers = create_list(args.file)
+    try:
+        givers = create_list(args.file)
+    except ValueError as e:
+        raise SystemExit(f"[-] {e}")
 
     #Mix up a copy of the givers to create assignments
     receivers = create_assignments(givers)

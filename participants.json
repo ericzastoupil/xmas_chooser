@@ -1,3 +1,4 @@
-{"name": "name1", "email": "email1", "dont_gift": ["dont1.1", "dont1.2"]}
-{"name": "name2", "email": "email2", "dont_gift": ["dont2.1", "dont2.2"]}
-{"name": "name3", "email": "email3", "dont_gift": []}
+{"name": "name1", "email": "email1", "dont_gift": ["name2"]}
+{"name": "name2", "email": "email2", "dont_gift": ["name1"]}
+{"name": "name3", "email": "email3", "dont_gift": ["name4"]}
+{"name": "name4", "email": "email4", "dont_gift": ["name3"]}
