@@ -11,21 +11,24 @@ def parse_command_line():
 
     return parser.parse_args()
 
-def create_assignments(givers, receivers):
+MAX_ATTEMPTS = 10000
 
-    invalid = True
+def is_valid_pair(giver, receiver):
+    return giver.name != receiver.name and receiver.name not in giver.dont_gift
 
-    #Loop until no one is giving to himself/herself, their spouse, or a don't gifter
-    while invalid:
-        invalid = False
+def create_assignments(givers):
+    receivers = givers.copy()
+
+    #Shuffle until no one is giving to themselves or someone on their dont_gift list
+    for _ in range(MAX_ATTEMPTS):
         random.shuffle(receivers)
-    
-        #If giving to yourself/your spouse/someone you're not allowed to, make this run invalid
-        for giver, receiver in zip(givers, receivers):
-            if giver.name == receiver.name:
-                invalid = True
-            elif receiver.name in giver.dont_gift:
-                invalid = True
+        if all(is_valid_pair(g, r) for g, r in zip(givers, receivers)):
+            return receivers
+
+    raise RuntimeError(
+        f"Could not find a valid assignment after {MAX_ATTEMPTS} attempts. "
+        "Check that the dont_gift lists leave everyone at least one possible receiver."
+    )
 
 def email_results(config_file, givers, receivers, real):
     print(f"[+] Emailing results...")
@@ -84,11 +87,8 @@ if __name__ == '__main__':
     #Create initial list based on file to read in
     givers = create_list(args.file)
 
-    #Create a whole new list to represent the receivers of gifts
-    receivers = givers.copy()
-
-    #Mix up receivers to create assignments
-    create_assignments(givers, receivers)
+    #Mix up a copy of the givers to create assignments
+    receivers = create_assignments(givers)
 
     #either print or email results
     if args.print:
