@@ -5,24 +5,38 @@ No one is assigned to themselves, and each participant can list people they must
 Pairings can be printed to the screen or sent as private emails.
 
 ```
-usage: xmas chooser [-h] (-p | -e EMAIL) -f FILE [-r]
+usage: xmas chooser [-h] (-p | -e EMAIL) -f FILE [-l LAST_YEAR] [-o OUTPUT] [-r]
 
 Assigns secret (or not secret) gift pairings
 
 options:
-  -h, --help         show this help message and exit
-  -p, --print        print assignments to console. not a secret
-  -e, --email EMAIL  email assignments. keeps things a secret. pass in config file (required) if
-                     using this switch
-  -f, --file FILE    participant file (.jsonl): one JSON object per line with name, email,
-                     dont_gift (required)
-  -r, --real         set this to send the real assignment emails
+  -h, --help            show this help message and exit
+  -p, --print           print assignments to console. not a secret
+  -e, --email EMAIL     email assignments. keeps things a secret. pass in config file (required)
+                        if using this switch
+  -f, --file FILE       participant file (.jsonl): one JSON object per line with name, email,
+                        dont_gift (required)
+  -l, --last-year LAST_YEAR
+                        last year's pairings, in the 'X gets a gift for Y' format that -p prints.
+                        those pairings won't be repeated
+  -o, --output OUTPUT   save pairings to this file (won't overwrite an existing file). pass it to
+                        -l next year
+  -r, --real            set this to send the real assignment emails
 ```
 
 Examples:
 
     python3 xmas_chooser.py -p -f participants.jsonl
     python3 xmas_chooser.py -e config.ini -f adults_participants.jsonl
+
+Avoiding last year's pairings: save each year's pairings with `-o`, then pass that file back with `-l` the next year. No giver will be assigned the same receiver as last year. `-o` won't overwrite an existing file, and it saves the pairings before printing or emailing them.
+
+    python3 xmas_chooser.py -p -f adults_participants.jsonl -o adults_pairings_2026.txt
+    python3 xmas_chooser.py -p -f adults_participants.jsonl -l adults_pairings_2026.txt -o adults_pairings_2027.txt   # next year
+
+The `-l` file has one `X gets a gift for Y` line per pairing (blank lines are ignored). Malformed lines and a giver listed twice are errors. Names not in this year's participant file are skipped with a warning, so people who've dropped out don't cause problems.
+
+Saved pairing files contain real names, so files named `*_pairings_*.txt` are git-ignored too.
 
 Participant file format (JSON Lines, `.jsonl`): one participant per line. `dont_gift` lists names of other participants this person must not be assigned. See `participants.jsonl` for an example:
 
