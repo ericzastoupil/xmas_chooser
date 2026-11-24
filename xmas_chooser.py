@@ -11,7 +11,7 @@ def parse_command_line():
     p_e_group = parser.add_mutually_exclusive_group(required=True)
     p_e_group.add_argument('-p', '--print', action='store_true', help='print assignments to console. not a secret')
     p_e_group.add_argument('-e','--email', type=str, help='email assignments. keeps things a secret. pass in config file (required) if using this switch')
-    parser.add_argument('-f', '--file', type=str, required=True, help="file with participant info (required)")
+    parser.add_argument('-f', '--file', type=str, required=True, help="participant file (.jsonl): one JSON object per line with name, email, dont_gift (required)")
     parser.add_argument('-r', '--real', action='store_true', help='set this to send the real assignment emails')
 
     return parser.parse_args()
