@@ -125,7 +125,10 @@ if __name__ == '__main__':
         raise SystemExit(f"[-] {e}")
 
     #Mix up a copy of the givers to create assignments
-    receivers = create_assignments(givers)
+    try:
+        receivers = create_assignments(givers)
+    except RuntimeError as e:
+        raise SystemExit(f"[-] {e}")
 
     #either print or email results
     if args.print:
