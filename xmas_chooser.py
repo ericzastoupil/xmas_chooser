@@ -1,4 +1,9 @@
-import random, smtplib, argparse, configparser, json
+import argparse
+import configparser
+import json
+import random
+import smtplib
+
 from participant import Participant
 
 def parse_command_line():
@@ -31,15 +36,15 @@ def create_assignments(givers):
     )
 
 def email_results(config_file, givers, receivers, real):
-    print(f"[+] Emailing results...")
+    print("[+] Emailing results...")
 
     config = configparser.ConfigParser()
     config.read(config_file)
     
     port = int(config['DEFAULT']['SSL_PORT'])
-    server = str(config['DEFAULT']['SMTP_SERVER'])
-    sender_mail = str(config['DEFAULT']['SENDER_EMAIL'])
-    password = str(config['DEFAULT']['SENDER_EMAIL_PASSWORD'])
+    server = config['DEFAULT']['SMTP_SERVER']
+    sender_mail = config['DEFAULT']['SENDER_EMAIL']
+    password = config['DEFAULT']['SENDER_EMAIL_PASSWORD']
 
     for giver, receiver in zip(givers, receivers):
         
@@ -62,7 +67,7 @@ def email_results(config_file, givers, receivers, real):
                     
         s.quit()
         
-        print(f'[+] Email sent to {giver.name} at address {giver.email}:')
+        print(f'[+] Email sent to {giver.name} at address {giver.email}')
 
 def print_results(givers, receivers):
     for giver, receiver in zip(givers, receivers):
@@ -113,8 +118,7 @@ def create_list(file_name):
 
     return givers
 
-if __name__ == '__main__':
-
+def main():
     #Take arguments from the command line
     args = parse_command_line()
 
@@ -135,3 +139,6 @@ if __name__ == '__main__':
         print_results(givers, receivers)
     elif args.email:
         email_results(args.email, givers, receivers, args.real)
+
+if __name__ == '__main__':
+    main()
