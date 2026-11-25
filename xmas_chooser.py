@@ -6,74 +6,120 @@ import random
 import re
 import smtplib
 import sys
+from email.message import EmailMessage
 
 from participant import Participant
 
-def parse_command_line():
+def parse_command_line(argv=None):
     parser = argparse.ArgumentParser(prog='xmas chooser', description='Assigns secret (or not secret) gift pairings')
     p_e_group = parser.add_mutually_exclusive_group(required=True)
     p_e_group.add_argument('-p', '--print', action='store_true', help='print assignments to console. not a secret')
-    p_e_group.add_argument('-e','--email', type=str, help='email assignments. keeps things a secret. pass in config file (required) if using this switch')
+    p_e_group.add_argument('-e', '--email', action='store_true', help='email assignments. keeps things a secret. email settings come from the -c file')
     parser.add_argument('-f', '--file', type=str, required=True, help="participant file (.jsonl): one JSON object per line with name, email, dont_gift (required)")
     parser.add_argument('-l', '--last-year', type=str, help="last year's pairings, in the 'X gets a gift for Y' format that -p prints. those pairings won't be repeated")
     parser.add_argument('-o', '--output', type=str, help="save pairings to this file (won't overwrite an existing file). pass it to -l next year")
-    parser.add_argument('-r', '--real', action='store_true', help='set this to send the real assignment emails')
+    parser.add_argument('-c', '--config', type=str, default='config.ini', help='email settings file (default: config.ini). copy config.example.ini to make one')
+    parser.add_argument('-r', '--real', action='store_true', help="with -e: email each person their own assignment. without -r, every email goes to the sender's own address as a test")
 
-    return parser.parse_args()
+    args = parser.parse_args(argv)
 
-MAX_ATTEMPTS = 10000
+    #If emailing fails partway, a rerun would reshuffle, so the pairings must be saved first
+    if args.email and args.real and not args.output:
+        parser.error("-e -r also needs -o FILE, so the pairings are saved in case emailing fails partway")
+
+    return args
+
+MAX_ATTEMPTS = 100000
 
 def is_valid_pair(giver, receiver):
     return giver.name != receiver.name and receiver.name not in giver.dont_gift
 
 def create_assignments(givers):
-    receivers = givers.copy()
+    """Seat everyone around one big circle; each person gives to the next person in it.
 
-    #Shuffle until no one is giving to themselves or someone on their dont_gift list
+    A single circle means no two people simply swap gifts with each other
+    (A gives to B and B gives to A), unless there are only two people.
+    """
+    circle = givers.copy()
+
     for _ in range(MAX_ATTEMPTS):
-        random.shuffle(receivers)
+        random.shuffle(circle)
+        next_in_circle = {circle[i].name: circle[(i + 1) % len(circle)] for i in range(len(circle))}
+        receivers = [next_in_circle[g.name] for g in givers]
         if all(is_valid_pair(g, r) for g, r in zip(givers, receivers)):
             return receivers
 
     raise RuntimeError(
-        f"Could not find a valid assignment after {MAX_ATTEMPTS} attempts. "
+        f"Could not find a valid gift circle after {MAX_ATTEMPTS} attempts. "
         "Check that the dont_gift lists (and last year's pairings, if given) leave everyone "
-        "at least one possible receiver."
+        "enough possible receivers."
     )
 
-def email_results(config_file, givers, receivers, real):
-    print("[+] Emailing results...")
+EMAIL_KEYS = ("SSL_PORT", "SMTP_SERVER", "SENDER_EMAIL", "SENDER_EMAIL_PASSWORD")
+
+def load_email_config(config_file):
+    if not os.path.exists(config_file):
+        raise ValueError(f"Email settings file {config_file} not found. Copy config.example.ini to {config_file} and fill it in.")
 
     config = configparser.ConfigParser()
     config.read(config_file)
-    
-    port = int(config['DEFAULT']['SSL_PORT'])
-    server = config['DEFAULT']['SMTP_SERVER']
-    sender_mail = config['DEFAULT']['SENDER_EMAIL']
-    password = config['DEFAULT']['SENDER_EMAIL_PASSWORD']
+    section = config['DEFAULT']
 
-    for giver, receiver in zip(givers, receivers):
-        
-        message = f"""\
-            Subject: Your secret santa selection
+    missing = [key for key in EMAIL_KEYS if key not in section]
+    if missing:
+        raise ValueError(f"{config_file} is missing: {', '.join(missing)}")
 
-            Hi {giver.name},
-            You will give a gift to {receiver.name}
-            """
-        
-        s = smtplib.SMTP_SSL(server, port)
-        s.login(sender_mail, password)
+    try:
+        port = int(section['SSL_PORT'])
+    except ValueError:
+        raise ValueError(f"{config_file}: SSL_PORT must be a number, got {section['SSL_PORT']!r}")
 
-        if real:
-            #don't uncomment until game time
-            #s.sendmail(sender_mail, giver.email, message)
-            pass
-        else:
-            s.sendmail(sender_mail, sender_mail, message)
-                    
-        s.quit()
-        
-        print(f'[+] Email sent to {giver.name} at address {giver.email}')
+    return {
+        "port": port,
+        "server": section['SMTP_SERVER'],
+        "sender": section['SENDER_EMAIL'],
+        "password": section['SENDER_EMAIL_PASSWORD'],
+    }
+
+def build_message(sender, to_address, giver, receiver, real):
+    msg = EmailMessage()
+    subject = "Your secret santa selection"
+    msg['Subject'] = subject if real else f"[TEST for {giver.name}] {subject}"
+    msg['From'] = sender
+    msg['To'] = to_address
+    msg.set_content(
+        f"Hi {giver.name},\n\n"
+        f"You will give a gift to {receiver.name}.\n\n"
+        "Merry Christmas!\n"
+    )
+    return msg
+
+def email_results(settings, givers, receivers, real):
+    sender = settings["sender"]
+    if real:
+        print("[+] Emailing each person their assignment...")
+    else:
+        print(f"[+] TEST MODE: all emails go to {sender}. Add -r to send the real ones.")
+
+    sent = []
+    try:
+        #One connection for the whole run instead of logging in once per person
+        with smtplib.SMTP_SSL(settings["server"], settings["port"]) as s:
+            s.login(sender, settings["password"])
+            for giver, receiver in zip(givers, receivers):
+                to_address = giver.email if real else sender
+                s.send_message(build_message(sender, to_address, giver, receiver, real))
+                sent.append(giver.name)
+                print(f'[+] Email for {giver.name} sent to {to_address}')
+    except (smtplib.SMTPException, OSError) as e:
+        not_sent = [g.name for g in givers if g.name not in sent]
+        raise RuntimeError(
+            f"Emailing failed: {e}\n"
+            f"  Sent: {', '.join(sent) or 'nobody'}\n"
+            f"  Not sent: {', '.join(not_sent)}\n"
+            "  Don't just rerun: that would reshuffle and give people conflicting assignments. "
+            "The full pairings are in the -o file."
+        )
 
 def format_pairing(giver, receiver):
     #Must stay in sync with PAIRING_PATTERN so saved output can be read back with -l
@@ -174,29 +220,22 @@ def apply_last_year(file_name, givers):
     if errors:
         raise ValueError(f"Problems in {file_name}:\n  " + "\n  ".join(errors))
 
-def main():
-    #Take arguments from the command line
-    args = parse_command_line()
-
+def run(args):
     #Fail before doing any work if the output file would be overwritten
     if args.output and os.path.exists(args.output):
-        raise SystemExit(f"[-] {args.output} already exists. Choose a different -o file or remove it first.")
+        raise ValueError(f"{args.output} already exists. Choose a different -o file or remove it first.")
+
+    #Check email settings up front so a bad config doesn't waste a shuffle
+    settings = load_email_config(args.config) if args.email else None
 
     #Create initial list based on file to read in
-    try:
-        givers = create_list(args.file)
+    givers = create_list(args.file)
 
-        #Don't repeat last year's giver -> receiver pairings
-        if args.last_year:
-            apply_last_year(args.last_year, givers)
-    except ValueError as e:
-        raise SystemExit(f"[-] {e}")
+    #Don't repeat last year's giver -> receiver pairings
+    if args.last_year:
+        apply_last_year(args.last_year, givers)
 
-    #Mix up a copy of the givers to create assignments
-    try:
-        receivers = create_assignments(givers)
-    except RuntimeError as e:
-        raise SystemExit(f"[-] {e}")
+    receivers = create_assignments(givers)
 
     #Save before printing/emailing so the pairings are kept even if emailing fails partway
     if args.output:
@@ -206,7 +245,17 @@ def main():
     if args.print:
         print_results(givers, receivers)
     elif args.email:
-        email_results(args.email, givers, receivers, args.real)
+        email_results(settings, givers, receivers, args.real)
+
+def main(argv=None):
+    args = parse_command_line(argv)
+    try:
+        run(args)
+    except OSError as e:
+        #e.g. a mistyped -f or -l file name
+        raise SystemExit(f"[-] Can't open {e.filename}: {e.strerror}" if e.filename else f"[-] {e}")
+    except (ValueError, RuntimeError) as e:
+        raise SystemExit(f"[-] {e}")
 
 if __name__ == '__main__':
     main()

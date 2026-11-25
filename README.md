@@ -39,14 +39,19 @@ In the Kids' Draw, brothers and sisters are kept apart. They already know exactl
 **🔁 LAW THE THIRD: Thou Shalt Not Repeat Thyself.**
 Did you get Aunt Somebody last year and buy her *that candle*? Fear not! The Chooser **remembers last year** and will *never* hand you the same person two years in a row. Fresh victims. I mean recipients. Fresh recipients.
 
-**🧮 LAW THE FOURTH: The Chooser Does Not Give Up Easily.**
-If the rules are tricky, the Chooser will shuffle and re-shuffle up to **ten thousand times** in its quest for the perfect arrangement. That's more effort than most of us put into wrapping. If even ten thousand attempts can't satisfy everyone's rules, it will politely announce that the rules are impossible, rather than spinning forever like a sad, confused Roomba.
+**⭕ LAW THE FOURTH: The Great Gift Circle Shall Be Unbroken.**
+The Chooser does not merely pair people off. Oh no. It seats the entire family around one **magnificent, unbroken Circle of Giving**: you give to the person beside you, who gives to the person beside *them*, and so on, all the way around until the last person gives to the first. One glorious ring of generosity, like a wreath, or a very festive conga line.
+
+This means there will be **no backroom gift swaps.** You will never draw someone who has *also* drawn you, so there's no "I'll get yours, you get mine, let's agree on twenty bucks" collusion. The Chooser sees all. The Chooser forbids it.
+
+**🧮 LAW THE FIFTH: The Chooser Does Not Give Up Easily.**
+If the rules are tricky, the Chooser will shuffle and re-shuffle up to **one hundred thousand times** in its quest for the perfect circle. That's more effort than most of us put into wrapping. If even a hundred thousand attempts can't satisfy everyone's rules, it will politely announce that the rules are impossible, rather than spinning forever like a sad, confused Roomba.
 
 ---
 
 ## 🔐 ON THE MATTER OF SECRECY
 
-The Chooser is fully capable of sending each of you a private email revealing your assignment, so that no one but you and the Chooser ever knows.
+The Chooser is fully capable of sending each of you a private email revealing your assignment, so that no one but you and the Chooser ever knows. Nobody else will see it. Not your spouse. Not the dog. Not even the Elf on the Shelf, who frankly has been watching quite enough.
 
 This year, however, the Keeper of the Laptop will simply **look at the screen.** This means the Keeper of the Laptop *knows everything*. Bribes may be submitted in the form of cookies. The Keeper makes no promises, but will accept the cookies.
 
@@ -109,15 +114,15 @@ Leave off `-l` if there's no record of last year. Try it out on the example file
 ### Options
 
 ```
-usage: xmas chooser [-h] (-p | -e EMAIL) -f FILE [-l LAST_YEAR] [-o OUTPUT] [-r]
+usage: xmas chooser [-h] (-p | -e) -f FILE [-l LAST_YEAR] [-o OUTPUT] [-c CONFIG] [-r]
 
 Assigns secret (or not secret) gift pairings
 
 options:
   -h, --help            show this help message and exit
   -p, --print           print assignments to console. not a secret
-  -e, --email EMAIL     email assignments. keeps things a secret. pass in config file (required)
-                        if using this switch
+  -e, --email           email assignments. keeps things a secret. email settings come from the -c
+                        file
   -f, --file FILE       participant file (.jsonl): one JSON object per line with name, email,
                         dont_gift (required)
   -l, --last-year LAST_YEAR
@@ -125,8 +130,21 @@ options:
                         those pairings won't be repeated
   -o, --output OUTPUT   save pairings to this file (won't overwrite an existing file). pass it to
                         -l next year
-  -r, --real            set this to send the real assignment emails
+  -c, --config CONFIG   email settings file (default: config.ini). copy config.example.ini to make
+                        one
+  -r, --real            with -e: email each person their own assignment. without -r, every email
+                        goes to the sender's own address as a test
 ```
+
+A mistyped file name gives a one-line `[-] Can't open ...` message rather than a Python traceback.
+
+### How pairings are made: one gift circle
+
+Everyone is shuffled into a single circle, and each person gives to the next person around it; the last person gives to the first. The shuffle repeats until every giver-to-receiver step obeys the rules (not yourself, nobody on your `dont_gift` list, nobody you had last year), up to 100,000 attempts.
+
+Because it's one circle, no two people ever simply swap gifts with each other (A gives to B and B gives to A), and you can't split into small closed groups. The one exception is a two-person draw, where a swap is unavoidable. Following the printed pairings from any person leads through everyone and back.
+
+A single circle is a slightly stricter requirement than "everyone gets someone valid", but with this family's lists and last year's pairings added, a valid circle turns up within about 50 shuffles on average.
 
 ### Participant file (`-f`)
 
@@ -145,8 +163,23 @@ The `-l` file has one `X gets a gift for Y` line per pairing, which is exactly w
 
 ### Keeping names out of the repo
 
-Files named `*_participants.jsonl` and `*_pairings_*.txt` are git-ignored, so real participant lists and saved pairings stay out of the repo.
+Files named `*_participants.jsonl` and `*_pairings_*.txt` are git-ignored, so real participant lists and saved pairings stay out of the repo. So is `config.ini`, which holds the email password.
 
 ### Email
 
-Email settings (SMTP server, port, sender account and password) are read from the config file passed to `-e`; see `config.ini` for the expected keys. Email mode has known open issues and isn't ready for real use yet; `-r` doesn't currently send the real emails.
+1. Copy `config.example.ini` to `config.ini` and fill in the SMTP server, port, sender address and password. (`config.ini` is git-ignored. Use `-c` to point at a different file.)
+2. Do a test run. Without `-r`, every email goes to the sender's own address, each with a `[TEST for <name>]` subject, so you can check they look right. (This does show you everyone's pairing.)
+
+       python3 xmas_chooser.py -e -f adults_participants.jsonl
+
+3. Send for real. `-r` emails each person their own assignment, and requires `-o` so the pairings are saved before anything is sent:
+
+       python3 xmas_chooser.py -e -r -f adults_participants.jsonl -l adults_pairings_2025.txt -o adults_pairings_2026.txt
+
+All emails go over one connection. The config file is checked before the shuffle, so a missing file or setting fails straight away. If sending fails partway, the script lists who was and wasn't emailed. **Don't just rerun it**, because that would reshuffle and give people conflicting assignments. The full pairings are in the `-o` file, so tell the remaining people their assignments from there.
+
+### Tests
+
+    python3 -m unittest -v
+
+The tests cover the gift-giving rules, the single circle (no swaps), file checking, last year's pairings, saving with `-o`, and email (with the mail server faked, so nothing is sent).

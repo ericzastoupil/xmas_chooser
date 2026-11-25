@@ -1,4 +1,5 @@
 *_participants.jsonl
 *_pairings_*.txt
+config.ini
 __pycache__/
 *:Zone.Identifier
